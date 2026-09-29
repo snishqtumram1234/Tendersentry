@@ -1,0 +1,20 @@
+{
+  "PAN": { "unit": null, "periodic": false, "docTypes": ["PAN_CARD", "GST_CERTIFICATE", "ITR_ACKNOWLEDGEMENT"] },
+  "GSTIN": { "unit": null, "periodic": false, "docTypes": ["GST_CERTIFICATE"] },
+  "CIN": { "unit": null, "periodic": false, "docTypes": ["INCORPORATION_CERTIFICATE"] },
+  "LLPIN": { "unit": null, "periodic": false, "docTypes": ["INCORPORATION_CERTIFICATE"] },
+  "UDYAM": { "unit": null, "periodic": false, "docTypes": ["UDYAM_CERTIFICATE"] },
+  "LEGAL_NAME": { "unit": null, "periodic": false, "docTypes": ["PAN_CARD", "GST_CERTIFICATE", "INCORPORATION_CERTIFICATE"] },
+  "REGISTERED_ADDRESS": { "unit": null, "periodic": false, "docTypes": ["GST_CERTIFICATE", "INCORPORATION_CERTIFICATE"] },
+  "ANNUAL_TURNOVER": { "unit": "INR", "periodic": true, "docTypes": ["CA_CERTIFICATE_TURNOVER", "PROFIT_AND_LOSS", "ITR_ACKNOWLEDGEMENT"] },
+  "NET_WORTH": { "unit": "INR", "periodic": true, "docTypes": ["CA_CERTIFICATE_NETWORTH", "BALANCE_SHEET"] },
+  "PROFIT_AFTER_TAX": { "unit": "INR", "periodic": true, "docTypes": ["PROFIT_AND_LOSS"] },
+  "EXPERIENCE_PROJECT": { "unit": "INR", "periodic": false, "docTypes": ["EXPERIENCE_CERTIFICATE", "WORK_ORDER", "COMPLETION_CERTIFICATE"] },
+  "CERTIFICATE": { "unit": null, "periodic": false, "docTypes": ["BIS_CERTIFICATE", "ISO_CERTIFICATE", "OEM_AUTHORISATION"] },
+  "MSME_STATUS": { "unit": null, "periodic": false, "docTypes": ["UDYAM_CERTIFICATE"] },
+  "STARTUP_STATUS": { "unit": null, "periodic": false, "docTypes": ["OTHER"] },
+  "LOCAL_CONTENT_PERCENT": { "unit": "PERCENT", "periodic": false, "docTypes": ["LOCAL_CONTENT_CERTIFICATE"] },
+  "DECLARATION": { "unit": null, "periodic": false, "docTypes": ["DECLARATION"] },
+  "EPFO_REGISTRATION": { "unit": null, "periodic": false, "docTypes": ["EPFO_REGISTRATION"] },
+  "ESIC_REGISTRATION": { "unit": null, "periodic": false, "docTypes": ["ESIC_REGISTRATION"] }
+}

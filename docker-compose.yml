@@ -1,0 +1,59 @@
+# App services only. Postgres + Storage + Mailpit come from Supabase
+# (local: `supabase start`; hosted: a Supabase project). See docs/DECISIONS.md ADR-001.
+name: tendersentry
+
+x-app-env: &app-env
+  env_file: .env
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
+
+  engine:
+    <<: *app-env
+    build: ./services/engine
+    restart: unless-stopped
+    expose: ["8000"]
+    mem_limit: 2g
+    cpus: 2
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/engine/health')"]
+      interval: 15s
+      retries: 5
+
+  api:
+    <<: *app-env
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      redis: { condition: service_healthy }
+      engine: { condition: service_healthy }
+    expose: ["4000"]
+
+  worker:
+    <<: *app-env
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["node", "apps/api/dist/worker.js"]
+    restart: unless-stopped
+    depends_on:
+      redis: { condition: service_healthy }
+      engine: { condition: service_healthy }
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    depends_on: [api]
+    ports: ["8080:8080"]

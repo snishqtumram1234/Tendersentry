@@ -1,0 +1,37 @@
+{
+  "name": "tendersentry",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.6.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter web --filter api dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "db:generate": "pnpm --filter api prisma:generate",
+    "env:apply": "node scripts/apply-supabase-env.mjs",
+    "db:migrate": "pnpm --filter api db:migrate",
+    "db:migrate:dev": "pnpm --filter api db:migrate:dev",
+    "db:setup": "pnpm --filter api db:setup",
+    "db:status": "pnpm --filter api db:status",
+    "seed": "pnpm --filter api seed",
+    "supabase": "supabase",
+    "stack:up": "supabase start && pnpm db:migrate && docker compose up --build -d",
+    "stack:down": "docker compose down && supabase stop",
+    "e2e": "playwright test -c tests/e2e"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.11.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.12.0",
+    "supabase": "^2.40.0",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.70.1"
+  }
+}

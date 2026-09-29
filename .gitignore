@@ -1,0 +1,22 @@
+node_modules/
+dist/
+build/
+coverage/
+.turbo/
+*.log
+.env
+.env.*
+!.env.example
+# Supabase CLI local state
+supabase/.branches/
+supabase/.temp/
+# Python
+__pycache__/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+# Playwright
+tests/e2e/test-results/
+tests/e2e/playwright-report/

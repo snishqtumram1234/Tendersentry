@@ -1,0 +1,79 @@
+# Supabase CLI local stack for TenderSentry.
+# Used for Postgres + Storage (+ Mailpit) only. App schema is owned by Prisma (apps/api/prisma/migrations),
+# not by supabase/migrations. See docs/DECISIONS.md ADR-001..003.
+
+project_id = "tendersentry"
+
+[api]
+enabled = true
+port = 54321
+# Keep the Data API schema list minimal; app tables are additionally locked down with RLS + revokes.
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17        # match hosted Supabase projects
+
+[db.pooler]
+enabled = false
+
+[db.seed]
+enabled = false            # seeding is done by `pnpm seed`, not the CLI
+
+[realtime]
+enabled = false            # SSE from the API is used instead
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true             # Mailpit: web UI :54324, SMTP :54325
+port = 54324
+smtp_port = 54325
+
+[storage]
+enabled = true
+file_size_limit = "25MiB"  # keep in sync with FILE_MAX_MB
+
+[storage.s3_protocol]
+enabled = true
+
+[storage.buckets.documents]
+public = false
+file_size_limit = "25MiB"
+allowed_mime_types = ["application/pdf", "image/png", "image/jpeg"]
+
+[storage.buckets.captures]
+public = false
+file_size_limit = "25MiB"
+allowed_mime_types = ["application/pdf", "image/png", "image/jpeg"]
+
+[storage.buckets.reports]
+public = false
+file_size_limit = "50MiB"
+allowed_mime_types = ["application/pdf", "text/csv", "application/json"]
+
+[storage.buckets.page-images]
+public = false
+file_size_limit = "10MiB"
+allowed_mime_types = ["image/png", "image/jpeg"]
+
+[auth]
+# Supabase Auth is not used (ADR-002). Keep it on only because other local services depend on it,
+# but block sign-ups so no parallel identity store accumulates.
+enabled = true
+enable_signup = false
+enable_anonymous_sign_ins = false
+
+[auth.email]
+enable_signup = false
+
+[edge_runtime]
+enabled = false
+
+[analytics]
+enabled = false

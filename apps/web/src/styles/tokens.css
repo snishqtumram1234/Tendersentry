@@ -1,0 +1,29 @@
+/* Design tokens (spec §20.2). Deviation: no Tailwind/design-system package yet — plain CSS variables
+   for Phase 0's login screens, to avoid another native-binary build dependency this early
+   (docs/PROGRESS.md). packages/ui will formalise this once more screens exist. */
+:root {
+  --ink: #15233b;
+  --ink-muted: #51607a;
+  --surface: #ffffff;
+  --canvas: #f3f5f8;
+  --rule: #d5dbe4;
+  --accent: #1f4e9a;
+  --accent-contrast: #ffffff;
+
+  --pass-fg: #1b7a4b;
+  --pass-bg: #e8f4ee;
+  --review-fg: #946200;
+  --review-bg: #fff4db;
+  --fail-fg: #b42318;
+  --fail-bg: #fdecea;
+  --neutral-fg: #5b6475;
+  --neutral-bg: #eef0f4;
+  --simulated-fg: #6b3fa0;
+  --simulated-bg: #f2ecf9;
+
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --radius-control: 6px;
+  --radius-panel: 8px;
+}

@@ -1,0 +1,381 @@
+@import "./tokens.css";
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+}
+
+a {
+  color: var(--accent);
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.auth-shell {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-panel);
+  padding: 32px;
+}
+
+.auth-card h1 {
+  font-size: 20px;
+  margin: 0 0 4px;
+}
+
+.auth-card .subtitle {
+  color: var(--ink-muted);
+  margin: 0 0 24px;
+  font-size: 13px;
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.field label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  font: inherit;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.field label.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 400;
+}
+
+.field label.checkbox input {
+  width: auto;
+}
+
+.field .hint {
+  color: var(--ink-muted);
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+button.primary {
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+button.primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+button.link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.error-banner {
+  background: var(--fail-bg);
+  color: var(--fail-fg);
+  border: 1px solid var(--fail-fg);
+  border-radius: var(--radius-control);
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.demo-banner {
+  background: var(--simulated-bg);
+  color: var(--simulated-fg);
+  border: 1px solid var(--simulated-fg);
+  border-radius: var(--radius-control);
+  padding: 10px 12px;
+  font-size: 12px;
+  margin-bottom: 20px;
+}
+
+.org-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.org-option {
+  text-align: left;
+  padding: 12px 14px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  font: inherit;
+  cursor: pointer;
+}
+
+.org-option:hover {
+  border-color: var(--accent);
+}
+
+.portal-chooser-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.portal-option {
+  display: block;
+  padding: 16px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.portal-option:hover {
+  border-color: var(--accent);
+}
+
+.portal-option .title {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.portal-option .desc {
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+
+.qr-box {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.qr-box img {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+}
+
+.dashboard-shell {
+  max-width: 720px;
+  margin: 40px auto;
+  padding: 0 16px;
+}
+
+.dashboard-shell .topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 8px 16px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-panel);
+  padding: 16px;
+}
+
+.kv dt {
+  color: var(--ink-muted);
+}
+
+.kv dd {
+  margin: 0;
+}
+
+.page-shell {
+  max-width: 1200px;
+  margin: 32px auto;
+  padding: 0 16px 80px;
+}
+
+.page-shell .topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-panel);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.card h2,
+.card h3 {
+  margin-top: 0;
+}
+
+button.secondary {
+  padding: 8px 14px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+button.secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.secondary:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.chip {
+  display: inline-block;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.chip-pass {
+  color: var(--pass-fg);
+  background: var(--pass-bg);
+}
+
+.chip-fail {
+  color: var(--fail-fg);
+  background: var(--fail-bg);
+}
+
+.chip-review {
+  color: var(--review-fg);
+  background: var(--review-bg);
+}
+
+.chip-neutral {
+  color: var(--neutral-fg);
+  background: var(--neutral-bg);
+}
+
+table.simple {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+table.simple th {
+  text-align: left;
+  color: var(--ink-muted);
+  font-weight: 500;
+  padding: 8px;
+  border-bottom: 1px solid var(--rule);
+}
+
+table.simple td {
+  padding: 8px;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+
+table.simple tr:last-child td {
+  border-bottom: none;
+}
+
+.list-nav a,
+.list-nav .list-nav-item {
+  display: block;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--rule);
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.list-nav a:hover {
+  background: var(--canvas);
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.tab {
+  padding: 8px 14px;
+  border: none;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+  color: var(--ink-muted);
+  border-bottom: 2px solid transparent;
+}
+
+.tab.active {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}

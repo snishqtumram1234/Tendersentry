@@ -1,0 +1,1552 @@
+// TenderSentry data model (docs/BUILD_SPEC.md §7) on Supabase Postgres.
+// Runtime connects as ts_app through the pooler (DATABASE_URL); migrations run as postgres (DIRECT_URL).
+// Triggers, RLS lock-down and grants live in prisma/sql/ and are applied by hand-written migrations.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ───────────────────────────── Enums ─────────────────────────────
+
+enum PortalType {
+  GOVERNMENT
+  BIDDER
+  PLATFORM
+}
+
+enum OrgType {
+  GOVERNMENT
+  BIDDER
+  PLATFORM
+}
+
+enum OrgStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  LOCKED
+  DEACTIVATED
+}
+
+enum MembershipStatus {
+  ACTIVE
+  REMOVED
+}
+
+enum Role {
+  ORG_ADMIN
+  BUYER
+  TECHNICAL_EVALUATOR
+  FINANCIAL_EVALUATOR
+  VERIFIER
+  COMMITTEE_MEMBER
+  APPROVING_AUTHORITY
+  AUDITOR
+  BIDDER_ADMIN
+  BID_USER
+  DOCUMENT_MANAGER
+  SYSTEM_ADMIN
+}
+
+enum ProcurementMode {
+  SINGLE_ENVELOPE
+  TWO_ENVELOPE
+}
+
+enum TenderState {
+  DRAFT
+  UNDER_REVIEW
+  APPROVED
+  PUBLISHED
+  OPEN_FOR_BIDS
+  BID_CLOSURE
+  TECHNICAL_EVALUATION
+  FINANCIAL_EVALUATION
+  AWARD_DECISION
+  CLOSED
+  CANCELLED
+}
+
+enum ReferenceDatePolicy {
+  BID_DEADLINE
+  EVALUATION_DATE
+}
+
+enum TenderVersionReason {
+  ORIGINAL
+  CORRIGENDUM
+}
+
+enum TenderDocumentRole {
+  MAIN
+  ANNEXURE
+  CORRIGENDUM
+  SCHEDULE
+  OTHER
+}
+
+enum RequirementCategory {
+  IDENTITY
+  STATUTORY
+  FINANCIAL
+  EXPERIENCE
+  TECHNICAL
+  CERTIFICATION
+  DECLARATION
+  OTHER
+}
+
+enum Envelope {
+  TECHNICAL
+  FINANCIAL
+}
+
+enum RequirementStatus {
+  ACTIVE
+  REMOVED
+}
+
+enum RuleOrigin {
+  AI_GENERATED
+  OFFICER_AUTHORED
+  OFFICER_EDITED
+  CORRIGENDUM
+  SEEDED
+}
+
+enum RuleVersionStatus {
+  DRAFT
+  AI_EXTRACTED
+  REVIEW_REQUIRED
+  APPROVED
+  ACTIVE
+  REJECTED
+  SUPERSEDED
+}
+
+enum CorrigendumState {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  PUBLISHED
+  REJECTED
+}
+
+enum DocType {
+  PAN_CARD
+  GST_CERTIFICATE
+  UDYAM_CERTIFICATE
+  INCORPORATION_CERTIFICATE
+  ITR_ACKNOWLEDGEMENT
+  BALANCE_SHEET
+  PROFIT_AND_LOSS
+  CA_CERTIFICATE_TURNOVER
+  CA_CERTIFICATE_NETWORTH
+  EXPERIENCE_CERTIFICATE
+  WORK_ORDER
+  COMPLETION_CERTIFICATE
+  OEM_AUTHORISATION
+  BIS_CERTIFICATE
+  ISO_CERTIFICATE
+  DECLARATION
+  LOCAL_CONTENT_CERTIFICATE
+  EPFO_REGISTRATION
+  ESIC_REGISTRATION
+  AUTHORISATION_LETTER
+  FINANCIAL_BID
+  TENDER_DOCUMENT
+  CORRIGENDUM
+  VERIFICATION_CAPTURE
+  OTHER
+}
+
+enum TextLayer {
+  NATIVE
+  OCR
+  MIXED
+  NONE
+}
+
+enum DocumentProcessingStatus {
+  UPLOADED
+  VALIDATING
+  PROCESSING
+  EXTRACTED
+  REVIEW_REQUIRED
+  FAILED
+  ARCHIVED
+}
+
+enum ScanStatus {
+  CLEAN
+  INFECTED
+  SKIPPED
+}
+
+enum BidState {
+  DRAFT
+  READY_FOR_SUBMISSION
+  SUBMITTED
+  TECHNICAL_REVIEW
+  VERIFICATION
+  EVALUATED
+  DECISION
+  CLARIFICATION_REQUIRED
+  WITHDRAWN
+  REJECTED
+  AWARDED
+  UNSUCCESSFUL
+}
+
+enum BidSource {
+  PORTAL
+  OFFICER_IMPORT
+}
+
+enum BidVersionReason {
+  SUBMISSION
+  CLARIFICATION
+  WITHDRAWAL
+}
+
+enum ExtractionMethod {
+  NATIVE_REGEX
+  OCR_REGEX
+  TABLE_PARSE
+  LLM
+  MANUAL
+}
+
+enum ClaimStatus {
+  DOCUMENT_UPLOADED
+  FIELD_EXTRACTED
+  STRUCTURALLY_VALID
+  DOCUMENT_SUPPORTED
+  RECONCILED
+  AUTHORITATIVE_VERIFIED
+  CONFLICT
+  REVIEW_REQUIRED
+  UNVERIFIABLE
+  EXPIRED
+  REVOKED
+}
+
+enum FreshnessState {
+  FRESH
+  EXPIRING
+  EXPIRED
+  REVERIFICATION_REQUIRED
+  REVOKED
+  CONFLICTED
+}
+
+enum EvidenceRole {
+  SUPPORTS
+  CONFLICTS
+  CONTEXT
+}
+
+enum ReconciliationOutcome {
+  CONSISTENT
+  NORMALISED_MATCH
+  CONFLICT
+  INSUFFICIENT_EVIDENCE
+}
+
+enum SourceCode {
+  PAN
+  GST
+  UDYAM
+  MCA
+  DIGILOCKER
+  EPFO
+  ESIC
+  BIS
+  PDF_SIGNATURE
+  QR
+  STRUCTURAL
+  CROSS_DOCUMENT
+  GST_PROVIDER_API
+  SIMULATED
+}
+
+enum VerificationMethod {
+  AUTHORIZED_API
+  PROVIDER_API
+  QR
+  DIGITAL_SIGNATURE
+  ISSUER
+  RECONCILIATION
+  OFFICER_ASSISTED
+  STRUCTURAL
+  SIMULATED
+}
+
+enum CapabilityStatus {
+  LIVE_VALIDATED
+  INTEGRATION_READY
+  MANUAL_ONLY
+  UNAVAILABLE
+  DISABLED
+  SIMULATED
+}
+
+enum CredentialStatus {
+  CONFIGURED
+  MISSING
+  INVALID
+}
+
+enum VerificationRoute {
+  AUTO
+  RECONCILIATION
+  HUMAN
+  UNAVAILABLE
+}
+
+enum AutomationState {
+  AUTO_AVAILABLE
+  EVIDENCE_RECONCILIATION
+  HUMAN_REQUIRED
+  UNAVAILABLE
+  FAILED
+  VERIFIED
+  CONFLICT
+  EXPIRED
+}
+
+enum VerificationTaskStatus {
+  QUEUED
+  IN_PROGRESS
+  VERIFIED
+  FAILED
+  UNAVAILABLE
+  CONFLICT
+  EXPIRED
+  REVIEWED
+}
+
+enum VerificationOutcome {
+  MATCH
+  NO_MATCH
+  NOT_FOUND
+  SOURCE_ERROR
+  SIGNATURE_VALID
+  SIGNATURE_INVALID
+  SIGNATURE_UNTRUSTED
+  DECODED
+}
+
+enum RunStatus {
+  RUNNING
+  COMPLETE
+  FAILED
+}
+
+enum RunTrigger {
+  MANUAL
+  SUBMISSION
+  CORRIGENDUM
+  CLARIFICATION
+  VERIFICATION_UPDATE
+}
+
+enum ComplianceResult {
+  NOT_ASSESSED
+  PENDING_VERIFICATION
+  PASS
+  FAIL
+  REVIEW_REQUIRED
+  NOT_APPLICABLE
+  BLOCKED
+}
+
+enum GateStatus {
+  PASS
+  FAIL
+  PENDING
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ExceptionCategory {
+  MISSING_DOCUMENT
+  IDENTITY_CONFLICT
+  FIELD_CONFLICT
+  FINANCIAL_EVIDENCE_CONFLICT
+  VERIFICATION_PENDING
+  VERIFICATION_FAILED
+  SOURCE_UNAVAILABLE
+  EXPIRED_EVIDENCE
+  LOW_EXTRACTION_CONFIDENCE
+  RULE_AMBIGUITY
+  MANDATORY_GATE_FAILED
+  RELATIONSHIP_SIGNAL
+  DOCUMENT_UNREADABLE
+  INTEGRITY_FAILURE
+  DOCUMENT_TYPE_MISMATCH
+}
+
+enum ExceptionStatus {
+  OPEN
+  ASSIGNED
+  IN_REVIEW
+  CLARIFICATION_REQUESTED
+  RESOLVED
+  ESCALATED
+  REOPENED
+}
+
+enum DecisionAction {
+  TECHNICALLY_COMPLIANT
+  TECHNICALLY_NON_COMPLIANT
+  NEEDS_CLARIFICATION
+  REFER_TO_COMMITTEE
+  FINAL_DECISION
+}
+
+enum ClarificationStatus {
+  OPEN
+  RESPONDED
+  CLOSED
+  EXPIRED
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  DEAD
+}
+
+enum ReportType {
+  BID_COMPLIANCE
+  TENDER_PACKAGE
+  EXCEPTIONS
+  VERIFICATION
+  AUDIT
+}
+
+enum ReportFormat {
+  PDF
+  CSV
+  JSON
+}
+
+// ───────────────────────── 7.1 Identity & tenancy ─────────────────────────
+
+model Organisation {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  code        String    @unique
+  type        OrgType
+  legalName   String    @map("legal_name")
+  displayName String    @map("display_name")
+  orgSubtype  String?   @map("org_subtype")
+  pan         String?
+  cin         String?
+  status      OrgStatus @default(ACTIVE)
+  address     Json?
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy   String?   @map("created_by") @db.Uuid
+
+  memberships       Membership[]
+  userRoles         UserRole[]
+  tenders           Tender[]
+  bids              Bid[]           @relation("BidderOrg")
+  documents         Document[]
+  bidderProfile     BidderProfile?
+  authorisedPersons AuthorisedPerson[]
+  directors         Director[]
+  addresses         Address[]
+  contacts          Contact[]
+  vaultItems        VaultItem[]
+  claims            Claim[]
+  decisionLabels    DecisionLabelConfig[]
+
+  @@index([type])
+  @@map("organisations")
+}
+
+model User {
+  id             String     @id @default(uuid(7)) @db.Uuid
+  portalType     PortalType @map("portal_type")
+  email          String     @unique @db.Citext
+  userIdHandle   String?    @unique @map("user_id_handle")
+  name           String
+  mobile         String?
+  passwordHash   String?    @map("password_hash")
+  mfaSecretEnc   String?    @map("mfa_secret_enc")
+  mfaEnabled     Boolean    @default(false) @map("mfa_enabled")
+  isDemo         Boolean    @default(false) @map("is_demo")
+  status         UserStatus @default(INVITED)
+  failedLogins   Int        @default(0) @map("failed_logins")
+  lockedUntil    DateTime?  @map("locked_until") @db.Timestamptz(6)
+  lastLoginAt    DateTime?  @map("last_login_at") @db.Timestamptz(6)
+  emailVerified  Boolean    @default(false) @map("email_verified")
+  mutedNotificationTypes String[] @default([]) @map("muted_notification_types")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy      String?    @map("created_by") @db.Uuid
+
+  memberships       Membership[]
+  roles             UserRole[]
+  sessions          Session[]
+  tenderAssignments TenderAssignment[]
+  notifications     Notification[]
+  passwordResets    PasswordResetToken[]
+
+  @@map("users")
+}
+
+model Membership {
+  userId         String           @map("user_id") @db.Uuid
+  organisationId String           @map("organisation_id") @db.Uuid
+  status         MembershipStatus @default(ACTIVE)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user         User         @relation(fields: [userId], references: [id])
+  organisation Organisation @relation(fields: [organisationId], references: [id])
+
+  @@id([userId, organisationId])
+  @@map("memberships")
+}
+
+model UserRole {
+  userId         String   @map("user_id") @db.Uuid
+  organisationId String   @map("organisation_id") @db.Uuid
+  role           Role
+  grantedBy      String?  @map("granted_by") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user         User         @relation(fields: [userId], references: [id])
+  organisation Organisation @relation(fields: [organisationId], references: [id])
+
+  @@id([userId, organisationId, role])
+  @@map("user_roles")
+}
+
+model TenderAssignment {
+  tenderId  String   @map("tender_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  role      Role
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String?  @map("created_by") @db.Uuid
+
+  tender Tender @relation(fields: [tenderId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@id([tenderId, userId, role])
+  @@map("tender_assignments")
+}
+
+model Session {
+  id               String    @id @default(uuid(7)) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  organisationId   String?   @map("organisation_id") @db.Uuid
+  refreshTokenHash String    @unique @map("refresh_token_hash")
+  mfaVerified      Boolean   @default(false) @map("mfa_verified")
+  device           String?
+  ip               String?
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastSeenAt       DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  expiresAt        DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt        DateTime? @map("revoked_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("password_reset_tokens")
+}
+
+model Invitation {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organisationId String    @map("organisation_id") @db.Uuid
+  email          String    @db.Citext
+  roles          Role[]
+  tokenHash      String    @unique @map("token_hash")
+  invitedBy      String    @map("invited_by") @db.Uuid
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(6)
+  acceptedAt     DateTime? @map("accepted_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("invitations")
+}
+
+model IdempotencyKey {
+  key            String   @id
+  userId         String   @map("user_id") @db.Uuid
+  route          String
+  requestHash    String   @map("request_hash")
+  responseStatus Int      @map("response_status")
+  responseBody   Json     @map("response_body")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@map("idempotency_keys")
+}
+
+// ─────────────────────────────── 7.2 Tenders ───────────────────────────────
+
+model Tender {
+  id                   String              @id @default(uuid(7)) @db.Uuid
+  code                 String              @unique
+  organisationId       String              @map("organisation_id") @db.Uuid
+  publicId             String              @unique @map("public_id")
+  title                String
+  category             String?
+  department           String?
+  objective            String?
+  procurementMode      ProcurementMode     @default(SINGLE_ENVELOPE) @map("procurement_mode")
+  estimatedValue       Decimal?            @map("estimated_value") @db.Decimal(20, 2)
+  valuePublic          Boolean             @default(false) @map("value_public")
+  quantity             String?
+  deliveryLocation     String?             @map("delivery_location")
+  requiredBy           DateTime?           @map("required_by") @db.Date
+  bidOpenAt            DateTime?           @map("bid_open_at") @db.Timestamptz(6)
+  bidDeadline          DateTime?           @map("bid_deadline") @db.Timestamptz(6)
+  techOpeningAt        DateTime?           @map("tech_opening_at") @db.Timestamptz(6)
+  state                TenderState         @default(DRAFT)
+  currentVersion       Int                 @default(1) @map("current_version")
+  referenceDatePolicy  ReferenceDatePolicy @default(BID_DEADLINE) @map("reference_date_policy")
+  externallyPublished  Boolean             @default(false) @map("externally_published")
+  flags                Json                @default("{}")
+  publicFields         Json?               @map("public_fields")
+  publishedAt          DateTime?           @map("published_at") @db.Timestamptz(6)
+  cancelledReason      String?             @map("cancelled_reason")
+  createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy            String?             @map("created_by") @db.Uuid
+
+  organisation  Organisation         @relation(fields: [organisationId], references: [id])
+  versions      TenderVersion[]
+  documents     TenderDocument[]
+  clauses       TenderClause[]
+  requirements  Requirement[]
+  rules         Rule[]
+  corrigenda    Corrigendum[]
+  assignments   TenderAssignment[]
+  bids          Bid[]
+  publicQA      PublicClarification[]
+  runs          ComplianceRun[]
+  exceptions    ExceptionItem[]
+  decisions     Decision[]
+
+  @@index([organisationId, state])
+  @@map("tenders")
+}
+
+model TenderVersion {
+  id            String              @id @default(uuid(7)) @db.Uuid
+  tenderId      String              @map("tender_id") @db.Uuid
+  version       Int
+  reason        TenderVersionReason
+  corrigendumId String?             @map("corrigendum_id") @db.Uuid
+  snapshot      Json
+  createdBy     String?             @map("created_by") @db.Uuid
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tender Tender @relation(fields: [tenderId], references: [id])
+
+  @@unique([tenderId, version])
+  @@map("tender_versions")
+}
+
+model TenderDocument {
+  id            String             @id @default(uuid(7)) @db.Uuid
+  tenderId      String             @map("tender_id") @db.Uuid
+  tenderVersion Int                @map("tender_version")
+  documentId    String             @map("document_id") @db.Uuid
+  role          TenderDocumentRole
+  isPublic      Boolean            @default(true) @map("is_public")
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tender   Tender   @relation(fields: [tenderId], references: [id])
+  document Document @relation(fields: [documentId], references: [id])
+
+  @@map("tender_documents")
+}
+
+model TenderClause {
+  id                     String   @id @default(uuid(7)) @db.Uuid
+  tenderId               String   @map("tender_id") @db.Uuid
+  tenderVersion          Int      @map("tender_version")
+  documentId             String?  @map("document_id") @db.Uuid
+  clauseRef              String   @map("clause_ref")
+  heading                String?
+  text                   String
+  pageStart              Int?     @map("page_start")
+  pageEnd                Int?     @map("page_end")
+  bbox                   Json?
+  category               String?
+  isRequirementCandidate Boolean  @default(false) @map("is_requirement_candidate")
+  segmentationMethod     String   @map("segmentation_method")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tender       Tender        @relation(fields: [tenderId], references: [id])
+  requirements Requirement[]
+
+  @@index([tenderId, tenderVersion])
+  @@map("tender_clauses")
+}
+
+model Requirement {
+  id             String              @id @default(uuid(7)) @db.Uuid
+  tenderId       String              @map("tender_id") @db.Uuid
+  code           String
+  title          String
+  category       RequirementCategory
+  mandatory      Boolean             @default(false)
+  weight         Decimal             @default(0) @db.Decimal(8, 2)
+  envelope       Envelope            @default(TECHNICAL)
+  sourceClauseId String?             @map("source_clause_id") @db.Uuid
+  status         RequirementStatus   @default(ACTIVE)
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tender       Tender        @relation(fields: [tenderId], references: [id])
+  sourceClause TenderClause? @relation(fields: [sourceClauseId], references: [id])
+  rules        Rule[]
+  results      RequirementResult[]
+
+  @@unique([tenderId, code])
+  @@map("requirements")
+}
+
+model Rule {
+  id               String   @id @default(uuid(7)) @db.Uuid
+  requirementId    String   @map("requirement_id") @db.Uuid
+  tenderId         String   @map("tender_id") @db.Uuid
+  code             String
+  currentVersionId String?  @map("current_version_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  requirement Requirement   @relation(fields: [requirementId], references: [id])
+  tender      Tender        @relation(fields: [tenderId], references: [id])
+  versions    RuleVersion[]
+
+  @@unique([tenderId, code])
+  @@map("rules")
+}
+
+model RuleVersion {
+  id               String            @id @default(uuid(7)) @db.Uuid
+  ruleId           String            @map("rule_id") @db.Uuid
+  version          Int
+  origin           RuleOrigin
+  status           RuleVersionStatus
+  dsl              Json?
+  plainEnglish     String?           @map("plain_english")
+  ambiguityFlags   Json              @default("[]") @map("ambiguity_flags")
+  validationErrors Json              @default("[]") @map("validation_errors")
+  llmMeta          Json?             @map("llm_meta")
+  editReason       String?           @map("edit_reason")
+  approvedBy       String?           @map("approved_by") @db.Uuid
+  approvedAt       DateTime?         @map("approved_at") @db.Timestamptz(6)
+  rejectedReason   String?           @map("rejected_reason")
+  supersedesId     String?           @map("supersedes_id") @db.Uuid
+  tenderVersion    Int               @map("tender_version")
+  createdBy        String?           @map("created_by") @db.Uuid
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  rule Rule @relation(fields: [ruleId], references: [id])
+
+  @@unique([ruleId, version])
+  @@map("rule_versions")
+}
+
+model Corrigendum {
+  id          String           @id @default(uuid(7)) @db.Uuid
+  tenderId    String           @map("tender_id") @db.Uuid
+  code        String           @unique
+  fromVersion Int              @map("from_version")
+  toVersion   Int              @map("to_version")
+  summary     String
+  changes     Json             @default("[]")
+  impact      Json?
+  state       CorrigendumState @default(DRAFT)
+  approvedBy  String?          @map("approved_by") @db.Uuid
+  publishedAt DateTime?        @map("published_at") @db.Timestamptz(6)
+  createdBy   String?          @map("created_by") @db.Uuid
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tender Tender @relation(fields: [tenderId], references: [id])
+
+  @@map("corrigenda")
+}
+
+model PublicClarification {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  tenderId    String    @map("tender_id") @db.Uuid
+  question    String
+  answer      String?
+  publishedAt DateTime? @map("published_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tender Tender @relation(fields: [tenderId], references: [id])
+
+  @@map("clarifications_public")
+}
+
+// ─────────────────── 7.3 Bidders, profiles, evidence vault ───────────────────
+
+model BidderProfile {
+  organisationId    String   @id @map("organisation_id") @db.Uuid
+  verificationLevel Int      @default(0) @map("verification_level")
+  badgeStatus       String   @default("NONE") @map("badge_status")
+  summary           Json     @default("{}")
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organisation Organisation @relation(fields: [organisationId], references: [id])
+
+  @@map("bidder_profiles")
+}
+
+model AuthorisedPerson {
+  id                      String   @id @default(uuid(7)) @db.Uuid
+  organisationId          String   @map("organisation_id") @db.Uuid
+  name                    String
+  designation             String?
+  email                   String?  @db.Citext
+  mobile                  String?
+  authorisationDocumentId String?  @map("authorisation_document_id") @db.Uuid
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organisation Organisation @relation(fields: [organisationId], references: [id])
+
+  @@map("authorised_persons")
+}
+
+model Director {
+  id               String   @id @default(uuid(7)) @db.Uuid
+  organisationId   String   @map("organisation_id") @db.Uuid
+  name             String
+  din              String?
+  sourceDocumentId String?  @map("source_document_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organisation Organisation @relation(fields: [organisationId], references: [id])
+
+  @@index([din])
+  @@map("directors")
+}
+
+model Address {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organisationId String   @map("organisation_id") @db.Uuid
+  kind           String
+  raw            String
+  normalised     String
+  pinCode        String?  @map("pin_code")
+  hash           String
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organisation Organisation @relation(fields: [organisationId], references: [id])
+
+  @@index([hash])
+  @@map("addresses")
+}
+
+model Contact {
+  id              String   @id @default(uuid(7)) @db.Uuid
+  organisationId  String   @map("organisation_id") @db.Uuid
+  kind            String
+  valueNormalised String   @map("value_normalised")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organisation Organisation @relation(fields: [organisationId], references: [id])
+
+  @@index([valueNormalised])
+  @@map("contacts")
+}
+
+model VaultItem {
+  id              String         @id @default(uuid(7)) @db.Uuid
+  organisationId  String         @map("organisation_id") @db.Uuid
+  evidenceType    DocType        @map("evidence_type")
+  documentId      String         @map("document_id") @db.Uuid
+  documentVersion Int            @map("document_version")
+  status          FreshnessState @default(FRESH)
+  validFrom       DateTime?      @map("valid_from") @db.Date
+  validUntil      DateTime?      @map("valid_until") @db.Date
+  freshnessPolicy Json?          @map("freshness_policy")
+  lastVerifiedAt  DateTime?      @map("last_verified_at") @db.Timestamptz(6)
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organisation Organisation @relation(fields: [organisationId], references: [id])
+  document     Document     @relation(fields: [documentId], references: [id])
+
+  @@map("vault_items")
+}
+
+// ────────────────────────────── 7.4 Documents ──────────────────────────────
+
+model Document {
+  id                   String                   @id @default(uuid(7)) @db.Uuid
+  ownerOrgId           String                   @map("owner_org_id") @db.Uuid
+  uploadedBy           String?                  @map("uploaded_by") @db.Uuid
+  originalFilename     String                   @map("original_filename")
+  mime                 String
+  sizeBytes            BigInt                   @map("size_bytes")
+  sha256               String
+  storageBucket        String                   @map("storage_bucket")
+  storageKey           String                   @map("storage_key")
+  pageCount            Int?                     @map("page_count")
+  declaredType         DocType?                 @map("declared_type")
+  docType              DocType?                 @map("doc_type")
+  docTypeConfidence    Decimal?                 @map("doc_type_confidence") @db.Decimal(4, 3)
+  classificationMethod String?                  @map("classification_method")
+  textLayer            TextLayer?               @map("text_layer")
+  processingStatus     DocumentProcessingStatus @default(UPLOADED) @map("processing_status")
+  quality              Json?
+  scanStatus           ScanStatus?              @map("scan_status")
+  envelope             Envelope                 @default(TECHNICAL)
+  version              Int                      @default(1)
+  versionGroupId       String                   @default(uuid(7)) @map("version_group_id") @db.Uuid
+  supersedesId         String?                  @map("supersedes_id") @db.Uuid
+  qrPayloads           Json?                    @map("qr_payloads")
+  signatureInfo        Json?                    @map("signature_info")
+  failureCode          String?                  @map("failure_code")
+  createdAt            DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  owner           Organisation      @relation(fields: [ownerOrgId], references: [id])
+  pages           DocumentPage[]
+  tables          DocumentTable[]
+  fields          ExtractedField[]
+  evidence        Evidence[]
+  tenderDocuments TenderDocument[]
+  bidDocuments    BidDocument[]
+  vaultItems      VaultItem[]
+
+  @@index([ownerOrgId, sha256])
+  @@map("documents")
+}
+
+model DocumentPage {
+  id            String   @id @default(uuid(7)) @db.Uuid
+  documentId    String   @map("document_id") @db.Uuid
+  pageNo        Int      @map("page_no")
+  width         Decimal  @db.Decimal(10, 2)
+  height        Decimal  @db.Decimal(10, 2)
+  rotation      Int      @default(0)
+  textSource    TextLayer @map("text_source")
+  text          String
+  words         Json     @default("[]")
+  ocrConfidence Decimal? @map("ocr_confidence") @db.Decimal(5, 2)
+  imageKey      String?  @map("image_key")
+
+  document Document @relation(fields: [documentId], references: [id])
+
+  @@unique([documentId, pageNo])
+  @@map("document_pages")
+}
+
+model DocumentTable {
+  id         String @id @default(uuid(7)) @db.Uuid
+  documentId String @map("document_id") @db.Uuid
+  pageNo     Int    @map("page_no")
+  bbox       Json
+  rows       Json
+
+  document Document @relation(fields: [documentId], references: [id])
+
+  @@map("document_tables")
+}
+
+// ──────────────────────────────── 7.5 Bids ────────────────────────────────
+
+model Bid {
+  id                        String    @id @default(uuid(7)) @db.Uuid
+  code                      String    @unique
+  tenderId                  String    @map("tender_id") @db.Uuid
+  bidderOrgId               String    @map("bidder_org_id") @db.Uuid
+  state                     BidState  @default(DRAFT)
+  tenderVersionAtSubmission Int?      @map("tender_version_at_submission")
+  submittedAt               DateTime? @map("submitted_at") @db.Timestamptz(6)
+  submissionId              String?   @unique @map("submission_id")
+  submittedBy               String?   @map("submitted_by") @db.Uuid
+  declarationAcceptedAt     DateTime? @map("declaration_accepted_at") @db.Timestamptz(6)
+  source                    BidSource @default(PORTAL)
+  currentBidVersion         Int       @default(0) @map("current_bid_version")
+  withdrawnReason           String?   @map("withdrawn_reason")
+  createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                 DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy                 String?   @map("created_by") @db.Uuid
+
+  tender         Tender                 @relation(fields: [tenderId], references: [id])
+  bidderOrg      Organisation           @relation("BidderOrg", fields: [bidderOrgId], references: [id])
+  versions       BidVersion[]
+  documents      BidDocument[]
+  financialBid   FinancialBid?
+  claims         Claim[]
+  runs           ComplianceRun[]
+  exceptions     ExceptionItem[]
+  decisions      Decision[]
+  clarifications ClarificationRequest[]
+
+  @@unique([tenderId, bidderOrgId])
+  @@map("bids")
+}
+
+model BidVersion {
+  id           String           @id @default(uuid(7)) @db.Uuid
+  bidId        String           @map("bid_id") @db.Uuid
+  version      Int
+  reason       BidVersionReason
+  manifest     Json
+  manifestHash String           @map("manifest_hash")
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy    String?          @map("created_by") @db.Uuid
+
+  bid Bid @relation(fields: [bidId], references: [id])
+
+  @@unique([bidId, version])
+  @@map("bid_versions")
+}
+
+model BidDocument {
+  bidId                String   @map("bid_id") @db.Uuid
+  bidVersion           Int      @map("bid_version")
+  documentId           String   @map("document_id") @db.Uuid
+  envelope             Envelope
+  mappedRequirementIds String[] @default([]) @map("mapped_requirement_ids") @db.Uuid
+
+  bid      Bid      @relation(fields: [bidId], references: [id])
+  document Document @relation(fields: [documentId], references: [id])
+
+  @@id([bidId, bidVersion, documentId])
+  @@map("bid_documents")
+}
+
+model FinancialBid {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  bidId      String    @unique @map("bid_id") @db.Uuid
+  amount     Decimal?  @db.Decimal(20, 2)
+  currency   String    @default("INR")
+  documentId String?   @map("document_id") @db.Uuid
+  sealed     Boolean   @default(true)
+  openedAt   DateTime? @map("opened_at") @db.Timestamptz(6)
+  openedBy   String?   @map("opened_by") @db.Uuid
+
+  bid Bid @relation(fields: [bidId], references: [id])
+
+  @@map("financial_bids")
+}
+
+// ─────────────────── 7.6 Extraction, claims, evidence ───────────────────
+
+model ExtractedField {
+  id               String           @id @default(uuid(7)) @db.Uuid
+  documentId       String           @map("document_id") @db.Uuid
+  field            String
+  valueRaw         String           @map("value_raw")
+  valueNormalised  Json?            @map("value_normalised")
+  unit             String?
+  pageNo           Int              @map("page_no")
+  bbox             Json?
+  confidence       Decimal          @db.Decimal(4, 3)
+  method           ExtractionMethod
+  extractorVersion String           @map("extractor_version")
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  document Document   @relation(fields: [documentId], references: [id])
+  evidence Evidence[]
+
+  @@index([documentId, field])
+  @@map("extracted_fields")
+}
+
+model Claim {
+  id                 String          @id @default(uuid(7)) @db.Uuid
+  subjectOrgId       String          @map("subject_org_id") @db.Uuid
+  bidId              String?         @map("bid_id") @db.Uuid
+  claimType          String          @map("claim_type")
+  key                String?
+  value              Json
+  status             ClaimStatus     @default(FIELD_EXTRACTED)
+  verificationStatus ClaimStatus?    @map("verification_status")
+  verificationMethod String?         @map("verification_method")
+  verifiedAt         DateTime?       @map("verified_at") @db.Timestamptz(6)
+  validUntil         DateTime?       @map("valid_until") @db.Date
+  freshnessState     FreshnessState? @map("freshness_state")
+  requirementIds     String[]        @default([]) @map("requirement_ids") @db.Uuid
+  createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  subjectOrg           Organisation          @relation(fields: [subjectOrgId], references: [id])
+  bid                  Bid?                  @relation(fields: [bidId], references: [id])
+  evidence             Evidence[]
+  verificationRequests VerificationRequest[]
+
+  @@index([bidId, claimType])
+  @@index([subjectOrgId, claimType])
+  @@map("claims")
+}
+
+model Evidence {
+  id                   String       @id @default(uuid(7)) @db.Uuid
+  claimId              String       @map("claim_id") @db.Uuid
+  extractedFieldId     String?      @map("extracted_field_id") @db.Uuid
+  documentId           String?      @map("document_id") @db.Uuid
+  pageNo               Int?         @map("page_no")
+  bbox                 Json?
+  excerpt              String?
+  role                 EvidenceRole @default(SUPPORTS)
+  verificationResultId String?      @map("verification_result_id") @db.Uuid
+  createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  claim              Claim               @relation(fields: [claimId], references: [id])
+  extractedField     ExtractedField?     @relation(fields: [extractedFieldId], references: [id])
+  document           Document?           @relation(fields: [documentId], references: [id])
+  verificationResult VerificationResult? @relation(fields: [verificationResultId], references: [id])
+
+  @@map("evidence")
+}
+
+model ReconciliationResult {
+  id        String                @id @default(uuid(7)) @db.Uuid
+  bidId     String?               @map("bid_id") @db.Uuid
+  orgId     String?               @map("org_id") @db.Uuid
+  field     String
+  outcome   ReconciliationOutcome
+  values    Json
+  method    String
+  details   Json?
+  createdAt DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([bidId, field])
+  @@map("reconciliation_results")
+}
+
+// ────────────────────────────── 7.7 Verification ──────────────────────────────
+
+model VerificationSource {
+  id                String             @id @default(uuid(7)) @db.Uuid
+  code              SourceCode         @unique
+  name              String
+  domain            String?
+  method            VerificationMethod
+  environment       String
+  enabled           Boolean            @default(true)
+  // Stored for display only; recomputed by the API from credentials + last health check (spec §14.6).
+  capabilityStatus  CapabilityStatus   @map("capability_status")
+  lastHealthCheckAt DateTime?          @map("last_health_check_at") @db.Timestamptz(6)
+  lastHealthResult  Json?              @map("last_health_result")
+  credentialStatus  CredentialStatus   @default(MISSING) @map("credential_status")
+  configEnc         String?            @map("config_enc")
+  adapterVersion    String?            @map("adapter_version")
+  portalUrl         String?            @map("portal_url")
+  instructions      String?
+  notes             String?
+  updatedAt         DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  requests VerificationRequest[]
+
+  @@map("verification_sources")
+}
+
+model VerificationRequest {
+  id              String            @id @default(uuid(7)) @db.Uuid
+  claimId         String            @map("claim_id") @db.Uuid
+  bidId           String?           @map("bid_id") @db.Uuid
+  sourceId        String            @map("source_id") @db.Uuid
+  route           VerificationRoute
+  automationState AutomationState   @map("automation_state")
+  priority        Int               @default(3)
+  createdBy       String?           @map("created_by") @db.Uuid
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  claim   Claim                @relation(fields: [claimId], references: [id])
+  source  VerificationSource   @relation(fields: [sourceId], references: [id])
+  tasks   VerificationTask[]
+  results VerificationResult[]
+
+  @@map("verification_requests")
+}
+
+model VerificationTask {
+  id            String                 @id @default(uuid(7)) @db.Uuid
+  code          String                 @unique
+  requestId     String                 @map("request_id") @db.Uuid
+  assigneeId    String?                @map("assignee_id") @db.Uuid
+  status        VerificationTaskStatus @default(QUEUED)
+  attempts      Int                    @default(0)
+  lastAttemptAt DateTime?              @map("last_attempt_at") @db.Timestamptz(6)
+  dueAt         DateTime?              @map("due_at") @db.Timestamptz(6)
+  notes         String?
+  createdAt     DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  request VerificationRequest @relation(fields: [requestId], references: [id])
+
+  @@index([status, assigneeId])
+  @@map("verification_tasks")
+}
+
+model VerificationResult {
+  id                 String              @id @default(uuid(7)) @db.Uuid
+  requestId          String              @map("request_id") @db.Uuid
+  mode               VerificationMethod
+  outcome            VerificationOutcome
+  normalised         Json?
+  rawResponseKey     String?             @map("raw_response_key")
+  rawResponseSha256  String?             @map("raw_response_sha256")
+  capturedDocumentId String?             @map("captured_document_id") @db.Uuid
+  checkedAt          DateTime            @map("checked_at") @db.Timestamptz(6)
+  checkedBy          String?             @map("checked_by") @db.Uuid
+  validUntil         DateTime?           @map("valid_until") @db.Date
+  isSimulated        Boolean             @default(false) @map("is_simulated")
+  trustedChain       Boolean             @default(false) @map("trusted_chain")
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  request  VerificationRequest @relation(fields: [requestId], references: [id])
+  evidence Evidence[]
+
+  @@map("verification_results")
+}
+
+// ──────────── 7.8 Compliance, score, risk, exceptions, decisions ────────────
+
+model ComplianceRun {
+  id                       String     @id @default(uuid(7)) @db.Uuid
+  code                     String     @unique
+  tenderId                 String     @map("tender_id") @db.Uuid
+  bidId                    String     @map("bid_id") @db.Uuid
+  bidVersion               Int        @map("bid_version")
+  tenderVersion            Int        @map("tender_version")
+  ruleVersionIds           String[]   @map("rule_version_ids") @db.Uuid
+  evidenceSnapshotHash     String?    @map("evidence_snapshot_hash")
+  verificationSnapshotHash String?    @map("verification_snapshot_hash")
+  engineVersion            String?    @map("engine_version")
+  referenceDate            DateTime   @map("reference_date") @db.Date
+  status                   RunStatus  @default(RUNNING)
+  startedAt                DateTime   @default(now()) @map("started_at") @db.Timestamptz(6)
+  finishedAt               DateTime?  @map("finished_at") @db.Timestamptz(6)
+  triggeredBy              String?    @map("triggered_by") @db.Uuid
+  triggerReason            RunTrigger @map("trigger_reason")
+
+  tender  Tender               @relation(fields: [tenderId], references: [id])
+  bid     Bid                  @relation(fields: [bidId], references: [id])
+  results RequirementResult[]
+  score   Score?
+  gate    MandatoryGateResult?
+  risk    RiskAssessment?
+
+  @@index([bidId, startedAt])
+  @@map("compliance_runs")
+}
+
+model RequirementResult {
+  id            String           @id @default(uuid(7)) @db.Uuid
+  runId         String           @map("run_id") @db.Uuid
+  requirementId String           @map("requirement_id") @db.Uuid
+  ruleVersionId String?          @map("rule_version_id") @db.Uuid
+  result        ComplianceResult
+  mandatory     Boolean
+  weight        Decimal          @db.Decimal(8, 2)
+  earnedWeight  Decimal          @map("earned_weight") @db.Decimal(8, 2)
+  trace         Json
+  explanation   String?
+  evidenceIds   String[]         @default([]) @map("evidence_ids") @db.Uuid
+
+  run         ComplianceRun @relation(fields: [runId], references: [id])
+  requirement Requirement   @relation(fields: [requirementId], references: [id])
+
+  @@unique([runId, requirementId])
+  @@map("requirement_results")
+}
+
+model Score {
+  runId            String  @id @map("run_id") @db.Uuid
+  total            Decimal @db.Decimal(5, 2)
+  applicableWeight Decimal @map("applicable_weight") @db.Decimal(10, 2)
+  earnedWeight     Decimal @map("earned_weight") @db.Decimal(10, 2)
+  maxAchievable    Decimal @map("max_achievable") @db.Decimal(5, 2)
+  provisional      Boolean
+  breakdown        Json
+
+  run ComplianceRun @relation(fields: [runId], references: [id])
+
+  @@map("scores")
+}
+
+model MandatoryGateResult {
+  runId        String     @id @map("run_id") @db.Uuid
+  passedCount  Int        @map("passed_count")
+  failedCount  Int        @map("failed_count")
+  pendingCount Int        @map("pending_count")
+  status       GateStatus
+
+  run ComplianceRun @relation(fields: [runId], references: [id])
+
+  @@map("mandatory_gate_results")
+}
+
+model RiskAssessment {
+  runId   String    @id @map("run_id") @db.Uuid
+  level   RiskLevel
+  signals Json
+
+  run ComplianceRun @relation(fields: [runId], references: [id])
+
+  @@map("risk_assessments")
+}
+
+model ExceptionItem {
+  id            String            @id @default(uuid(7)) @db.Uuid
+  code          String            @unique
+  tenderId      String            @map("tender_id") @db.Uuid
+  bidId         String?           @map("bid_id") @db.Uuid
+  requirementId String?           @map("requirement_id") @db.Uuid
+  category      ExceptionCategory
+  severity      RiskLevel
+  status        ExceptionStatus   @default(OPEN)
+  dedupeKey     String            @unique @map("dedupe_key")
+  title         String
+  detail        String?
+  nextAction    String?           @map("next_action")
+  evidenceIds   String[]          @default([]) @map("evidence_ids") @db.Uuid
+  assignedTo    String?           @map("assigned_to") @db.Uuid
+  resolution    String?
+  resolvedBy    String?           @map("resolved_by") @db.Uuid
+  resolvedAt    DateTime?         @map("resolved_at") @db.Timestamptz(6)
+  sourceRunId   String?           @map("source_run_id") @db.Uuid
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tender   Tender             @relation(fields: [tenderId], references: [id])
+  bid      Bid?               @relation(fields: [bidId], references: [id])
+  comments ExceptionComment[]
+
+  @@index([tenderId, status, severity])
+  @@map("exceptions")
+}
+
+model ExceptionComment {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  exceptionId String   @map("exception_id") @db.Uuid
+  authorId    String   @map("author_id") @db.Uuid
+  body        String
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  exception ExceptionItem @relation(fields: [exceptionId], references: [id])
+
+  @@map("exception_comments")
+}
+
+model Override {
+  id            String   @id @default(uuid(7)) @db.Uuid
+  entityType    String   @map("entity_type")
+  entityId      String   @map("entity_id") @db.Uuid
+  originalValue Json     @map("original_value")
+  newValue      Json     @map("new_value")
+  reason        String
+  reference     String?
+  actorId       String   @map("actor_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([entityType, entityId])
+  @@map("overrides")
+}
+
+model Decision {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  tenderId       String         @map("tender_id") @db.Uuid
+  bidId          String         @map("bid_id") @db.Uuid
+  runId          String?        @map("run_id") @db.Uuid
+  action         DecisionAction
+  label          String
+  note           String?
+  acknowledgedExceptionIds String[] @default([]) @map("acknowledged_exception_ids") @db.Uuid
+  actorId        String         @map("actor_id") @db.Uuid
+  role           Role
+  idempotencyKey String?        @unique @map("idempotency_key")
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tender Tender @relation(fields: [tenderId], references: [id])
+  bid    Bid    @relation(fields: [bidId], references: [id])
+
+  @@map("decisions")
+}
+
+model ClarificationRequest {
+  id                 String              @id @default(uuid(7)) @db.Uuid
+  bidId              String              @map("bid_id") @db.Uuid
+  exceptionId        String?             @map("exception_id") @db.Uuid
+  requirementIds     String[]            @default([]) @map("requirement_ids") @db.Uuid
+  requestedBy        String              @map("requested_by") @db.Uuid
+  question           String
+  dueAt              DateTime            @map("due_at") @db.Timestamptz(6)
+  status             ClarificationStatus @default(OPEN)
+  responseText       String?             @map("response_text")
+  responseBidVersion Int?                @map("response_bid_version")
+  respondedAt        DateTime?           @map("responded_at") @db.Timestamptz(6)
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  bid Bid @relation(fields: [bidId], references: [id])
+
+  @@map("clarification_requests")
+}
+
+model DecisionLabelConfig {
+  organisationId String         @map("organisation_id") @db.Uuid
+  action         DecisionAction
+  label          String
+  requiresRole   Role           @map("requires_role")
+
+  organisation Organisation @relation(fields: [organisationId], references: [id])
+
+  @@id([organisationId, action])
+  @@map("decision_label_configs")
+}
+
+// ─────────────────────────────── 7.9 Platform ───────────────────────────────
+
+model AuditEvent {
+  id             BigInt   @id @default(autoincrement())
+  code           String   @unique
+  occurredAt     DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  actorId        String?  @map("actor_id") @db.Uuid
+  actorRole      String?  @map("actor_role")
+  actorPortal    String?  @map("actor_portal")
+  organisationId String?  @map("organisation_id") @db.Uuid
+  action         String
+  entityType     String   @map("entity_type")
+  entityId       String?  @map("entity_id")
+  tenderId       String?  @map("tender_id") @db.Uuid
+  bidId          String?  @map("bid_id") @db.Uuid
+  before         Json?
+  after          Json?
+  reason         String?
+  evidenceRefs   Json?    @map("evidence_refs")
+  ip             String?
+  sessionId      String?  @map("session_id") @db.Uuid
+  requestId      String?  @map("request_id")
+  prevHash       String   @map("prev_hash")
+  hash           String   @unique
+
+  @@index([entityType, entityId])
+  @@index([tenderId, occurredAt])
+  @@index([actorId, occurredAt])
+  @@map("audit_events")
+}
+
+model Notification {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  type      String
+  title     String
+  body      String
+  link      String?
+  critical  Boolean   @default(false)
+  readAt    DateTime? @map("read_at") @db.Timestamptz(6)
+  emailedAt DateTime? @map("emailed_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+model Job {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  queue        String
+  entityType   String?   @map("entity_type")
+  entityId     String?   @map("entity_id")
+  status       JobStatus @default(QUEUED)
+  step         String?
+  attempts     Int       @default(0)
+  maxAttempts  Int       @default(3) @map("max_attempts")
+  startedAt    DateTime? @map("started_at") @db.Timestamptz(6)
+  finishedAt   DateTime? @map("finished_at") @db.Timestamptz(6)
+  errorCode    String?   @map("error_code")
+  errorMessage String?   @map("error_message")
+  payloadHash  String?   @map("payload_hash")
+  organisationId String? @map("organisation_id") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([queue, status])
+  @@map("jobs")
+}
+
+model FeatureFlag {
+  key       String   @id
+  enabled   Boolean  @default(false)
+  scope     String   @default("GLOBAL")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("feature_flags")
+}
+
+model SystemSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy String?  @map("updated_by") @db.Uuid
+
+  @@map("system_settings")
+}
+
+model Report {
+  id               String       @id @default(uuid(7)) @db.Uuid
+  type             ReportType
+  entityId         String       @map("entity_id") @db.Uuid
+  format           ReportFormat
+  storageBucket    String?      @map("storage_bucket")
+  storageKey       String?      @map("storage_key")
+  sha256           String?
+  jobId            String?      @map("job_id") @db.Uuid
+  organisationId   String       @map("organisation_id") @db.Uuid
+  generatedBy      String       @map("generated_by") @db.Uuid
+  generatedAt      DateTime?    @map("generated_at") @db.Timestamptz(6)
+  dataSnapshotHash String?      @map("data_snapshot_hash")
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("reports")
+}
+
+model DemoRequest {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  name         String
+  email        String   @db.Citext
+  organisation String?
+  message      String?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("demo_requests")
+}

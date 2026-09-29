@@ -1,0 +1,158 @@
+# TenderSentry CI (spec §25.3). Two jobs always run and never need secrets: web-api and engine.
+# A third, db-integration, only runs the tests that hit a real database, and only if the repo has
+# a DATABASE_URL/DIRECT_URL secret configured — see docs/deployment.md "Hosted Supabase". Until
+# those secrets exist, that job's steps are skipped with a clear message, not a red X.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web-api:
+    name: web + api (lint, typecheck, unit, build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests (no database — spec §23.1)
+        run: pnpm --filter api test
+
+      - name: Web production build
+        run: pnpm --filter web build
+
+      - name: Web tests (placeholder until Phase 1+ adds component tests)
+        run: pnpm --filter web test
+
+      - name: gitleaks (no secrets in git — spec §24)
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz | tar -xz gitleaks
+          ./gitleaks detect --source . --no-git -v
+
+      - name: pnpm audit (non-blocking for now — see docs/PROGRESS.md)
+        run: pnpm audit --prod || true
+
+  engine:
+    name: engine (ruff, mypy, pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/engine
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install engine (with dev extras)
+        run: pip install -e ".[dev]"
+
+      - name: ruff
+        run: ruff check .
+
+      - name: mypy
+        run: mypy engine
+
+      - name: pytest
+        run: pytest -v
+
+      - name: pip-audit (non-blocking for now — see docs/PROGRESS.md)
+        run: pip install pip-audit && pip-audit || true
+
+  db-integration:
+    name: db integration (needs DATABASE_URL/DIRECT_URL secrets)
+    runs-on: ubuntu-latest
+    needs: web-api
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      APP_BASE_URL: http://localhost:8080
+      API_PORT: "4000"
+      ENGINE_URL: http://localhost:8000
+      ENGINE_TOKEN: ci-engine-token-0000000000000000
+      STORAGE_ENDPOINT: ${{ secrets.STORAGE_ENDPOINT }}
+      STORAGE_REGION: ${{ secrets.STORAGE_REGION }}
+      STORAGE_ACCESS_KEY: ${{ secrets.STORAGE_ACCESS_KEY }}
+      STORAGE_SECRET_KEY: ${{ secrets.STORAGE_SECRET_KEY }}
+      SESSION_JWT_SECRET: ci-session-secret-ci-session-secret-ci-session-secret-32b
+      APP_ENCRYPTION_KEY: ${{ secrets.APP_ENCRYPTION_KEY }}
+      TS_APP_DB_PASSWORD: ${{ secrets.TS_APP_DB_PASSWORD }}
+      DEMO_MODE: "true"
+      DEMO_OTP: "000000"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: corepack enable
+
+      - name: Check for DB secrets
+        id: check
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::DATABASE_URL secret is not configured — skipping DB integration tests. See docs/deployment.md."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        if: steps.check.outputs.skip == 'false'
+        run: pnpm install --frozen-lockfile
+
+      # Our scripts read .env via dotenv-cli (same as local dev), not raw process env, so
+      # materialize one from this job's secrets/env before running them.
+      - name: Write .env from CI secrets
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          cat > .env <<EOF
+          APP_ENV=demo
+          APP_BASE_URL=$APP_BASE_URL
+          API_PORT=$API_PORT
+          ENGINE_URL=$ENGINE_URL
+          ENGINE_TOKEN=$ENGINE_TOKEN
+          DATABASE_URL=$DATABASE_URL
+          DIRECT_URL=$DIRECT_URL
+          STORAGE_ENDPOINT=$STORAGE_ENDPOINT
+          STORAGE_REGION=$STORAGE_REGION
+          STORAGE_ACCESS_KEY=$STORAGE_ACCESS_KEY
+          STORAGE_SECRET_KEY=$STORAGE_SECRET_KEY
+          SESSION_JWT_SECRET=$SESSION_JWT_SECRET
+          APP_ENCRYPTION_KEY=$APP_ENCRYPTION_KEY
+          TS_APP_DB_PASSWORD=$TS_APP_DB_PASSWORD
+          DEMO_MODE=$DEMO_MODE
+          DEMO_OTP=$DEMO_OTP
+          EOF
+
+      - name: Apply migrations (idempotent — spec §7.0)
+        if: steps.check.outputs.skip == 'false'
+        run: pnpm db:migrate
+
+      - name: Data API lock-down check (spec §23.1, ADR-003)
+        if: steps.check.outputs.skip == 'false'
+        run: pnpm db:setup
+
+      - name: Integration tests (spec §23.2)
+        if: steps.check.outputs.skip == 'false'
+        run: pnpm --filter api test:int

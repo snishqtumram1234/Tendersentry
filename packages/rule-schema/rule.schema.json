@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tendersentry.local/schema/rule.schema.json",
+  "title": "TenderSentry Rule DSL",
+  "description": "Closed rule language (spec §12). The LLM compiler and the manual rule builder both target this schema; the compliance interpreter (Phase 4) is the only thing that executes it. No eval/exec — this is data, never code.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "rule_code", "name", "requirement_category", "mandatory", "envelope", "on_missing_evidence", "expression", "plain_english", "source"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "rule_code": { "type": "string", "pattern": "^R-[0-9]+$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "requirement_category": { "enum": ["IDENTITY", "STATUTORY", "FINANCIAL", "EXPERIENCE", "TECHNICAL", "CERTIFICATION", "DECLARATION", "OTHER"] },
+    "mandatory": { "type": "boolean" },
+    "weight": { "type": "number", "minimum": 0, "maximum": 100 },
+    "envelope": { "enum": ["TECHNICAL", "FINANCIAL"] },
+    "on_missing_evidence": { "enum": ["FAIL", "REVIEW_REQUIRED"] },
+    "allow_provisional": { "type": "boolean", "default": false },
+    "evidence_types": { "type": "array", "items": { "type": "string" } },
+    "min_verification": { "enum": ["DOCUMENT_UPLOADED", "FIELD_EXTRACTED", "STRUCTURALLY_VALID", "DOCUMENT_SUPPORTED", "RECONCILED", "AUTHORITATIVE_VERIFIED"] },
+    "expression": { "$ref": "#/$defs/booleanNode" },
+    "exemptions": { "type": "array", "items": { "$ref": "#/$defs/exemption" } },
+    "plain_english": { "type": "string", "minLength": 1 },
+    "source": { "$ref": "#/$defs/source" },
+    "ambiguities": { "type": "array", "items": { "$ref": "#/$defs/ambiguity" } }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document_id", "clause_ref", "page"],
+      "properties": {
+        "document_id": { "type": "string" },
+        "clause_ref": { "type": "string" },
+        "page": { "type": "integer", "minimum": 1 },
+        "quote": { "type": "string" }
+      }
+    },
+    "ambiguity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "question"],
+      "properties": {
+        "code": { "type": "string" },
+        "question": { "type": "string" },
+        "options": { "type": "array", "items": { "type": "string" } },
+        "resolution": { "type": "string" }
+      }
+    },
+    "exemption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "when", "effect"],
+      "properties": {
+        "code": { "type": "string" },
+        "when": { "$ref": "#/$defs/booleanNode" },
+        "effect": { "enum": ["NOT_APPLICABLE", "PASS"] },
+        "requires_evidence": { "type": "array", "items": { "type": "string" } },
+        "min_verification": { "enum": ["DOCUMENT_UPLOADED", "FIELD_EXTRACTED", "STRUCTURALLY_VALID", "DOCUMENT_SUPPORTED", "RECONCILED", "AUTHORITATIVE_VERIFIED"] }
+      }
+    },
+    "claimType": {
+      "enum": ["PAN", "GSTIN", "CIN", "LLPIN", "UDYAM", "LEGAL_NAME", "REGISTERED_ADDRESS", "ANNUAL_TURNOVER", "NET_WORTH", "PROFIT_AFTER_TAX", "EXPERIENCE_PROJECT", "CERTIFICATE", "MSME_STATUS", "STARTUP_STATUS", "LOCAL_CONTENT_PERCENT", "DECLARATION", "EPFO_REGISTRATION", "ESIC_REGISTRATION"]
+    },
+    "period": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["LAST_N_COMPLETED_FY", "FY_LIST", "LAST_N_YEARS_FROM_REFERENCE", "ALL"] },
+        "n": { "type": "integer", "minimum": 1 },
+        "fys": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "booleanNode": {
+      "oneOf": [
+        { "$ref": "#/$defs/andNode" },
+        { "$ref": "#/$defs/orNode" },
+        { "$ref": "#/$defs/notNode" },
+        { "$ref": "#/$defs/ifNode" },
+        { "$ref": "#/$defs/compareNode" },
+        { "$ref": "#/$defs/documentExistsNode" },
+        { "$ref": "#/$defs/dateValidityNode" },
+        { "$ref": "#/$defs/fieldMatchNode" },
+        { "$ref": "#/$defs/entityMatchNode" },
+        { "$ref": "#/$defs/sourceVerifiedNode" },
+        { "$ref": "#/$defs/thresholdCountNode" },
+        { "$ref": "#/$defs/claimTrueNode" },
+        { "$ref": "#/$defs/tenderFlagNode" }
+      ]
+    },
+    "andNode": { "type": "object", "additionalProperties": false, "required": ["node", "args"], "properties": { "node": { "const": "AND" }, "args": { "type": "array", "items": { "$ref": "#/$defs/booleanNode" }, "minItems": 1 } } },
+    "orNode": { "type": "object", "additionalProperties": false, "required": ["node", "args"], "properties": { "node": { "const": "OR" }, "args": { "type": "array", "items": { "$ref": "#/$defs/booleanNode" }, "minItems": 1 } } },
+    "notNode": { "type": "object", "additionalProperties": false, "required": ["node", "arg"], "properties": { "node": { "const": "NOT" }, "arg": { "$ref": "#/$defs/booleanNode" } } },
+    "ifNode": { "type": "object", "additionalProperties": false, "required": ["node", "cond", "then"], "properties": { "node": { "const": "IF" }, "cond": { "$ref": "#/$defs/booleanNode" }, "then": { "$ref": "#/$defs/booleanNode" }, "else": { "$ref": "#/$defs/booleanNode" } } },
+    "compareNode": { "type": "object", "additionalProperties": false, "required": ["node", "left", "op", "right"], "properties": { "node": { "const": "COMPARE" }, "left": { "$ref": "#/$defs/valueNode" }, "op": { "enum": [">=", ">", "<=", "<", "==", "!="] }, "right": { "$ref": "#/$defs/valueNode" } } },
+    "documentExistsNode": { "type": "object", "additionalProperties": false, "required": ["node", "doc_type"], "properties": { "node": { "const": "DOCUMENT_EXISTS" }, "doc_type": { "type": "string" }, "min_count": { "type": "integer", "minimum": 1, "default": 1 } } },
+    "dateValidityNode": { "type": "object", "additionalProperties": false, "required": ["node", "doc_type", "valid_on"], "properties": { "node": { "const": "DATE_VALIDITY" }, "doc_type": { "type": "string" }, "valid_on": { "type": "string" }, "min_days_remaining": { "type": "integer", "minimum": 0 } } },
+    "fieldMatchNode": { "type": "object", "additionalProperties": false, "required": ["node", "field"], "properties": { "node": { "const": "FIELD_MATCH" }, "field": { "$ref": "#/$defs/claimType" }, "scope": { "enum": ["ALL_DOCUMENTS", "DOC_TYPES"] }, "doc_types": { "type": "array", "items": { "type": "string" } } } },
+    "entityMatchNode": { "type": "object", "additionalProperties": false, "required": ["node", "entity"], "properties": { "node": { "const": "ENTITY_MATCH" }, "entity": { "enum": ["LEGAL_NAME", "ADDRESS"] }, "tolerance": { "enum": ["NORMALISED"] } } },
+    "sourceVerifiedNode": { "type": "object", "additionalProperties": false, "required": ["node", "claim_type", "min_status"], "properties": { "node": { "const": "SOURCE_VERIFIED" }, "claim_type": { "$ref": "#/$defs/claimType" }, "min_status": { "enum": ["AUTHORITATIVE_VERIFIED", "RECONCILED", "DOCUMENT_SUPPORTED"] } } },
+    "thresholdCountNode": { "type": "object", "additionalProperties": false, "required": ["node", "series", "op", "value", "min_count"], "properties": { "node": { "const": "THRESHOLD_COUNT" }, "series": { "$ref": "#/$defs/seriesNode" }, "op": { "enum": [">=", ">", "<=", "<", "==", "!="] }, "value": { "$ref": "#/$defs/valueNode" }, "min_count": { "type": "integer", "minimum": 1 } } },
+    "claimTrueNode": { "type": "object", "additionalProperties": false, "required": ["node", "claim_type"], "properties": { "node": { "const": "CLAIM_TRUE" }, "claim_type": { "$ref": "#/$defs/claimType" } } },
+    "tenderFlagNode": { "type": "object", "additionalProperties": false, "required": ["node", "flag"], "properties": { "node": { "const": "TENDER_FLAG" }, "flag": { "type": "string" } } },
+
+    "valueNode": {
+      "oneOf": [
+        { "$ref": "#/$defs/constNode" },
+        { "$ref": "#/$defs/aggNode" },
+        { "$ref": "#/$defs/ratioNode" },
+        { "$ref": "#/$defs/percentageNode" },
+        { "$ref": "#/$defs/fieldNode" }
+      ]
+    },
+    "constNode": { "type": "object", "additionalProperties": false, "required": ["node", "value"], "properties": { "node": { "const": "CONST" }, "value": { "type": "string" }, "unit": { "enum": ["INR", "COUNT", "PERCENT", "DAYS", "YEARS"] } } },
+    "aggNode": { "type": "object", "additionalProperties": false, "required": ["node", "fn", "series"], "properties": { "node": { "const": "AGG" }, "fn": { "enum": ["SUM", "AVERAGE", "MIN", "MAX", "COUNT"] }, "series": { "$ref": "#/$defs/seriesNode" } } },
+    "ratioNode": { "type": "object", "additionalProperties": false, "required": ["node", "num", "den"], "properties": { "node": { "const": "RATIO" }, "num": { "$ref": "#/$defs/valueNode" }, "den": { "$ref": "#/$defs/valueNode" } } },
+    "percentageNode": { "type": "object", "additionalProperties": false, "required": ["node", "part", "whole"], "properties": { "node": { "const": "PERCENTAGE" }, "part": { "$ref": "#/$defs/valueNode" }, "whole": { "$ref": "#/$defs/valueNode" } } },
+    "fieldNode": { "type": "object", "additionalProperties": false, "required": ["node", "claim_type"], "properties": { "node": { "const": "FIELD" }, "claim_type": { "$ref": "#/$defs/claimType" }, "period": { "$ref": "#/$defs/period" } } },
+
+    "seriesNode": {
+      "oneOf": [
+        { "$ref": "#/$defs/seriesLeafNode" },
+        { "$ref": "#/$defs/topNNode" },
+        { "$ref": "#/$defs/filterNode" }
+      ]
+    },
+    "seriesLeafNode": { "type": "object", "additionalProperties": false, "required": ["node", "claim_type", "period"], "properties": { "node": { "const": "SERIES" }, "claim_type": { "$ref": "#/$defs/claimType" }, "period": { "$ref": "#/$defs/period" } } },
+    "topNNode": { "type": "object", "additionalProperties": false, "required": ["node", "series", "n", "order"], "properties": { "node": { "const": "TOP_N" }, "series": { "$ref": "#/$defs/seriesNode" }, "n": { "type": "integer", "minimum": 1 }, "order": { "enum": ["ASC", "DESC"] } } },
+    "filterNode": { "type": "object", "additionalProperties": false, "required": ["node", "series", "op", "value"], "properties": { "node": { "const": "FILTER" }, "series": { "$ref": "#/$defs/seriesNode" }, "op": { "enum": [">=", ">", "<=", "<", "==", "!="] }, "value": { "$ref": "#/$defs/valueNode" } } }
+  }
+}
